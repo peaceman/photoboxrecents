@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>LEL</title>
+    <script>
+        var ws = new WebSocket('ws://' + location.host + '/data');
+        ws.onmessage = function (event) {
+            console.log(event);
+        };
+    </script>
 </head>
 <body>
 

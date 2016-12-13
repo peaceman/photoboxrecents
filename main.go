@@ -20,12 +20,14 @@ func main() {
 	done := make(chan bool)
 
 	photoFileService := NewPhotoFileService(config.photoFolder)
-	go photoFileService.scanPhotoFolder()
 	go photoFileService.loop()
 
-	log.Println(photoFileService)
+	webClientHub := NewWebClientHub(photoFileService)
+	go webClientHub.loop()
+	go photoFileService.scanPhotoFolder()
 
 	http.Handle("/", http.FileServer(http.Dir("web")))
+	http.HandleFunc("/data", webClientHub.handleWebClientConnection)
 
 	log.Println("Open HTTP socket at:", config.listenAddress)
 	err := http.ListenAndServe(config.listenAddress, nil)

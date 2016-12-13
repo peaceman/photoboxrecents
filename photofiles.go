@@ -18,15 +18,19 @@ type PhotoFile struct {
 	modTime time.Time
 }
 
+func (p *PhotoFile) String() string {
+	return p.path
+}
+
 type PhotoFileService struct {
-	photoFolder       string
-	photoFiles        []*PhotoFile
-	pathToPhotoFile   map[string]*PhotoFile
-	newPhotoFilesChan chan *PhotoFile
+	photoFolder                    string
+	photoFiles                     []*PhotoFile
+	pathToPhotoFile                map[string]*PhotoFile
+	newPhotoFilesChan              chan *PhotoFile
 
-	newPhotoListeners map[chan *PhotoFile]bool
+	newPhotoListeners              map[chan *PhotoFile]bool
 
-	RegisterNewPhotoListenerChan chan chan *PhotoFile
+	RegisterNewPhotoListenerChan   chan chan *PhotoFile
 	UnregisterNewPhotoListenerChan chan chan *PhotoFile
 }
 
@@ -48,7 +52,7 @@ func (pfs *PhotoFileService) GetRecentPhotoFiles() []*PhotoFile {
 }
 
 func (pfs *PhotoFileService) scanPhotoFolder() {
-	log.Println("Start scanning of the photo folder at", pfs.photoFolder)
+	log.Println("PhotoFileService: Start scanning of the photo folder at", pfs.photoFolder)
 	files, err := ioutil.ReadDir(pfs.photoFolder)
 	if err != nil {
 		log.Fatal(err)
@@ -66,12 +70,12 @@ func (pfs *PhotoFileService) scanPhotoFolder() {
 	for _, photoFile := range photoFiles {
 		pfs.addPhotoFile(photoFile)
 	}
-	log.Println("Finished scanning of the photo folder at", pfs.photoFolder)
+	log.Println("PhotoFileService: Finished scanning of the photo folder at", pfs.photoFolder)
 }
 
 func (pfs *PhotoFileService) addPhotoFile(pf PhotoFile) bool {
 	if _, exists := pfs.pathToPhotoFile[pf.path]; exists {
-		log.Println("Skip adding photo file at path", pf.path, "is already registered!")
+		log.Println("PhotoFileService: Skip adding photo file at path", pf.path, "is already registered!")
 		return false
 	}
 
@@ -83,7 +87,7 @@ func (pfs *PhotoFileService) addPhotoFile(pf PhotoFile) bool {
 	pfs.pathToPhotoFile[pf.path] = &pf;
 	pfs.photoFiles = append(pfs.photoFiles, &pf)
 
-	log.Println("Add new photo file at path", pf.path)
+	log.Println("PhotoFileService: Add new photo file at path", pf.path)
 	pfs.newPhotoFilesChan <- &pf
 
 	return true
@@ -94,7 +98,7 @@ func (pfs *PhotoFileService) watchFolderLoop(photoFolder string) {
 	if err != nil {
 		log.Fatal("Failed to get absolute path of", photoFolder)
 	}
-	log.Println("Starting to watch for file changes in", photoFolderPath)
+	log.Println("PhotoFileService: Starting to watch for file changes in", photoFolderPath)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -106,7 +110,7 @@ func (pfs *PhotoFileService) watchFolderLoop(photoFolder string) {
 	for {
 		select {
 		case event := <-watcher.Events:
-			log.Println("event:", event)
+			//log.Println("event:", event)
 
 			if event.Op == fsnotify.Create {
 				absolutePath, _ := filepath.Abs(event.Name)
@@ -123,7 +127,7 @@ func (pfs *PhotoFileService) watchFolderLoop(photoFolder string) {
 
 
 		case err := <-watcher.Errors:
-			log.Println("error:", err)
+			log.Println("FileWatcherError:", err)
 		}
 	}
 }
@@ -142,12 +146,9 @@ func (pfs *PhotoFileService) newPhotoListenerLoop() {
 }
 
 func (pfs *PhotoFileService) broadCastNewPhotoFile(pf *PhotoFile) {
+	log.Printf("PhotoFileService: Broadcast new photo file %s to %v listeners", pf, len(pfs.newPhotoListeners))
 	for listener := range pfs.newPhotoListeners {
-		select {
-		case listener <- pf:
-			default:
-			pfs.unregisterNewPhotoListener(listener)
-		}
+		listener <- pf
 	}
 }
 

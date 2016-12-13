@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/websocket"
 	"time"
 	"log"
+	"fmt"
 )
 
 const (
@@ -36,13 +37,13 @@ func NewWebClient(webSocket *websocket.Conn, unregisterWebClientChan chan<- *Web
 	return webClient
 }
 
-func (webClient *WebClient) close() {
+func (webClient *WebClient) closeConnection() {
 	webClient.unregisterWebClientChan <- webClient
 	webClient.webSocket.Close()
 }
 
 func (webClient *WebClient) readLoop() {
-	defer webClient.close()
+	defer webClient.closeConnection()
 
 	ws := webClient.webSocket
 	ws.SetReadLimit(maxMessageSize)
@@ -60,7 +61,7 @@ func (webClient *WebClient) readLoop() {
 }
 
 func (webClient *WebClient) writeLoop() {
-	defer webClient.close()
+	defer webClient.closeConnection()
 
 	pingTicker := time.NewTicker(pingPeriod)
 
@@ -89,4 +90,13 @@ func (webClient *WebClient) writeLoop() {
 func (webClient *WebClient) write(messageType int, payload []byte) error {
 	webClient.webSocket.SetWriteDeadline(time.Now().Add(writeWait))
 	return webClient.webSocket.WriteMessage(messageType, payload)
+}
+
+func (webClient *WebClient) StartServing() {
+	go webClient.writeLoop()
+	webClient.readLoop()
+}
+
+func (webClient *WebClient) String() string {
+	return fmt.Sprintf("%v", webClient.webSocket.RemoteAddr())
 }
