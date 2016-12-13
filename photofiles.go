@@ -10,36 +10,41 @@ import (
 	"strings"
 	"sort"
 	"os"
+	"regexp"
 )
 
-type photoFile struct {
+type PhotoFile struct {
 	path    string
 	modTime time.Time
 }
 
 type PhotoFileService struct {
 	photoFolder       string
-	photoFiles        []*photoFile
-	pathToPhotoFile   map[string]*photoFile
-	newPhotoFilesChan chan *photoFile
+	photoFiles        []*PhotoFile
+	pathToPhotoFile   map[string]*PhotoFile
+	newPhotoFilesChan chan *PhotoFile
 
-	newPhotoListeners map[chan *photoFile]bool
+	newPhotoListeners map[chan *PhotoFile]bool
 
-	RegisterNewPhotoListenerChan chan chan *photoFile
-	UnregisterNewPhotoListenerChan chan chan *photoFile
+	RegisterNewPhotoListenerChan chan chan *PhotoFile
+	UnregisterNewPhotoListenerChan chan chan *PhotoFile
 }
 
 func NewPhotoFileService(photoFolder string) *PhotoFileService {
 	pfs := new(PhotoFileService)
 	pfs.photoFolder = photoFolder
-	pfs.newPhotoFilesChan = make(chan *photoFile)
-	pfs.pathToPhotoFile = make(map[string]*photoFile)
-	pfs.newPhotoListeners = make(map[chan *photoFile]bool)
+	pfs.newPhotoFilesChan = make(chan *PhotoFile)
+	pfs.pathToPhotoFile = make(map[string]*PhotoFile)
+	pfs.newPhotoListeners = make(map[chan *PhotoFile]bool)
 
-	pfs.RegisterNewPhotoListenerChan = make(chan chan *photoFile)
-	pfs.UnregisterNewPhotoListenerChan = make(chan chan *photoFile)
+	pfs.RegisterNewPhotoListenerChan = make(chan chan *PhotoFile)
+	pfs.UnregisterNewPhotoListenerChan = make(chan chan *PhotoFile)
 
 	return pfs
+}
+
+func (pfs *PhotoFileService) GetRecentPhotoFiles() []*PhotoFile {
+	return pfs.photoFiles[:10]
 }
 
 func (pfs *PhotoFileService) scanPhotoFolder() {
@@ -49,10 +54,10 @@ func (pfs *PhotoFileService) scanPhotoFolder() {
 		log.Fatal(err)
 	}
 
-	var photoFiles []photoFile
+	var photoFiles []PhotoFile
 	for _, file := range files {
 		path := strings.Join([]string{pfs.photoFolder, file.Name()}, "/")
-		photoFile := photoFile{path: path, modTime: file.ModTime()}
+		photoFile := PhotoFile{path: path, modTime: file.ModTime()}
 		photoFiles = append(photoFiles, photoFile)
 	}
 
@@ -64,9 +69,14 @@ func (pfs *PhotoFileService) scanPhotoFolder() {
 	log.Println("Finished scanning of the photo folder at", pfs.photoFolder)
 }
 
-func (pfs *PhotoFileService) addPhotoFile(pf photoFile) bool {
+func (pfs *PhotoFileService) addPhotoFile(pf PhotoFile) bool {
 	if _, exists := pfs.pathToPhotoFile[pf.path]; exists {
 		log.Println("Skip adding photo file at path", pf.path, "is already registered!")
+		return false
+	}
+
+	match, _ := regexp.MatchString("(?i).+\\.(png|jpeg|JPG)", pf.path)
+	if !match {
 		return false
 	}
 
@@ -107,7 +117,7 @@ func (pfs *PhotoFileService) watchFolderLoop(photoFolder string) {
 					continue
 				}
 
-				pf := photoFile{path: absolutePath, modTime: info.ModTime()}
+				pf := PhotoFile{path: absolutePath, modTime: info.ModTime()}
 				pfs.addPhotoFile(pf)
 			}
 
@@ -131,7 +141,7 @@ func (pfs *PhotoFileService) newPhotoListenerLoop() {
 	}
 }
 
-func (pfs *PhotoFileService) broadCastNewPhotoFile(pf *photoFile) {
+func (pfs *PhotoFileService) broadCastNewPhotoFile(pf *PhotoFile) {
 	for listener := range pfs.newPhotoListeners {
 		select {
 		case listener <- pf:
@@ -141,7 +151,7 @@ func (pfs *PhotoFileService) broadCastNewPhotoFile(pf *photoFile) {
 	}
 }
 
-func (pfs *PhotoFileService) unregisterNewPhotoListener(listener chan *photoFile) {
+func (pfs *PhotoFileService) unregisterNewPhotoListener(listener chan *PhotoFile) {
 	if _, ok := pfs.newPhotoListeners[listener]; !ok {
 		return // is not registered
 	}
@@ -150,12 +160,8 @@ func (pfs *PhotoFileService) unregisterNewPhotoListener(listener chan *photoFile
 	close(listener)
 }
 
-func (pfs *PhotoFileService) registerNewPhotoListener(listener chan *photoFile) {
+func (pfs *PhotoFileService) registerNewPhotoListener(listener chan *PhotoFile) {
 	pfs.newPhotoListeners[listener] = true
-
-	for _, photoFile := range pfs.photoFiles[0:10] {
-		listener <- photoFile
-	}
 }
 
 func (pfs *PhotoFileService) loop() {
@@ -163,7 +169,7 @@ func (pfs *PhotoFileService) loop() {
 	go pfs.newPhotoListenerLoop()
 }
 
-type ByModTime []photoFile
+type ByModTime []PhotoFile
 
 func (s ByModTime) Len() int {
 	return len(s)
