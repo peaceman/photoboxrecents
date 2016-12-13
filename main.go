@@ -4,12 +4,13 @@ import (
 	// "fmt"
 	"flag"
 	"log"
+	"net/http"
 )
 
 var config *Config = &Config{}
 
 func init() {
-	flag.StringVar(&config.listenAddress, "listen", ":80", "http listen address")
+	flag.StringVar(&config.listenAddress, "listen", ":6740", "http listen address")
 	flag.StringVar(&config.photoFolder, "photo-folder", "", "path to the photo folder")
 }
 
@@ -23,6 +24,15 @@ func main() {
 	go photoFileService.loop()
 
 	log.Println(photoFileService)
+
+	http.Handle("/", http.FileServer(http.Dir("web")))
+
+	log.Println("Open HTTP socket at:", config.listenAddress)
+	err := http.ListenAndServe(config.listenAddress, nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
+
 
 	//go func() {
 	//	for {
