@@ -22,7 +22,9 @@
     },
     methods: {
       openWebSocketConnection () {
-        let ws = new WebSocket('ws://localhost:6740/data')
+        // let address = 'ws://localhost:6740/data'
+        let address = 'ws://' + location.host + '/data'
+        let ws = new WebSocket(address)
 
         ws.onmessage = (event) => {
           let photo = JSON.parse(event.data)

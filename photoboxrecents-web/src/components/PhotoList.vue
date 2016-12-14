@@ -17,3 +17,10 @@ export default {
   props: ['photos']
 }
 </script>
+
+<style>
+  .photo-list > ul {
+    list-style: none;
+    padding: 0;
+  }
+</style>
