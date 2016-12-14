@@ -11,6 +11,7 @@ import (
 	"sort"
 	"os"
 	"regexp"
+	"encoding/json"
 )
 
 type PhotoFile struct {
@@ -19,7 +20,10 @@ type PhotoFile struct {
 }
 
 func (p *PhotoFile) String() string {
-	return p.path
+	data := map[string]interface{}{"filename": filepath.Base(p.path)}
+	response, _ := json.Marshal(data)
+	return string(response)
+	//return p.path
 }
 
 type PhotoFileService struct {
@@ -48,7 +52,7 @@ func NewPhotoFileService(photoFolder string) *PhotoFileService {
 }
 
 func (pfs *PhotoFileService) GetRecentPhotoFiles() []*PhotoFile {
-	return pfs.photoFiles[:10]
+	return pfs.photoFiles[len(pfs.photoFiles) - 10:]
 }
 
 func (pfs *PhotoFileService) scanPhotoFolder() {
@@ -87,6 +91,7 @@ func (pfs *PhotoFileService) addPhotoFile(pf PhotoFile) bool {
 	pfs.pathToPhotoFile[pf.path] = &pf;
 	pfs.photoFiles = append(pfs.photoFiles, &pf)
 
+	log.Println(pfs.photoFiles)
 	log.Println("PhotoFileService: Add new photo file at path", pf.path)
 	pfs.newPhotoFilesChan <- &pf
 

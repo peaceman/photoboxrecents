@@ -26,8 +26,9 @@ func main() {
 	go webClientHub.loop()
 	go photoFileService.scanPhotoFolder()
 
-	http.Handle("/", http.FileServer(http.Dir("web")))
+	http.Handle("/", http.FileServer(http.Dir("photoboxrecents-web/dist")))
 	http.HandleFunc("/data", webClientHub.handleWebClientConnection)
+	http.Handle("/photo/", http.StripPrefix("/photo/", http.FileServer(http.Dir(config.photoFolder))))
 
 	log.Println("Open HTTP socket at:", config.listenAddress)
 	err := http.ListenAndServe(config.listenAddress, nil)
