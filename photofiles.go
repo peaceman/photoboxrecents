@@ -52,7 +52,12 @@ func NewPhotoFileService(photoFolder string) *PhotoFileService {
 }
 
 func (pfs *PhotoFileService) GetRecentPhotoFiles() []*PhotoFile {
-	return pfs.photoFiles[len(pfs.photoFiles) - 10:]
+	offset := len(pfs.photoFiles) - 10
+	if offset < 0 {
+		offset = 0
+	}
+
+	return pfs.photoFiles[offset:]
 }
 
 func (pfs *PhotoFileService) scanPhotoFolder() {
