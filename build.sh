@@ -38,6 +38,8 @@ done
 
 prepare_static_folder
 
+cp start.bat $TMP
+
 DATE=$(date +"%Y%m%d-%H%M%S")
 (cd $TMP && zip -r - .) > "$BUILD_FOLDER/$PROJECT_NAME-$DATE.zip"
 rm -rf $TMP
